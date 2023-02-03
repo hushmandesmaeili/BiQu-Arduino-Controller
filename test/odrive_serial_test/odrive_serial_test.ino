@@ -10,10 +10,10 @@ void setup() {
   Serial.begin(115200);
 
   while (!Serial) ; // waits for serial monitor to open
-
 }
 
 void loop() {
+  
   if (Serial.available()) {
     char c = Serial.read();
 
@@ -23,6 +23,7 @@ void loop() {
       int requested_state;
       
       requested_state = ODriveArduino::AXIS_STATE_FULL_CALIBRATION_SEQUENCE;
+      //Serial <<"Axis" << c <<":Requesting state " << requested_state << '\n';
       if (!odrive.run_state(0, requested_state, true)) return;
 
       requested_state = ODriveArduino::AXIS_STATE_CLOSED_LOOP_CONTROL; // not triggering for some reason
@@ -51,6 +52,11 @@ void loop() {
     if (c == 'e') { // get encoder position estimates
       Serial.println("Getting encoder position estimates...");
       odrive_serial.write("r axis0.encoder.pos_estimate\n");
+      Serial.println(odrive.readFloat());
+    }
+    // Read bus voltage
+    if (c == 'b') {
+      odrive_serial.write("r vbus_voltage\n");
       Serial.println(odrive.readFloat());
     }
   }
