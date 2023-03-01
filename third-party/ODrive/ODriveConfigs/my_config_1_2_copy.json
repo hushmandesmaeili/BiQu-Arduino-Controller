@@ -1,7 +1,7 @@
 {
     "config": {
         "enable_uart": true,
-        "uart_baudrate": 115200,
+        "uart_baudrate": 921600,
         "enable_i2c_instead_of_can": false,
         "enable_ascii_protocol_on_usb": true,
         "max_regen_current": 0.0,
