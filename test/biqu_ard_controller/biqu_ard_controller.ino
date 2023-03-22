@@ -1,4 +1,4 @@
-#include <ODriveArduino.h>
+ #include <ODriveArduino.h>
 #include <HardwareSerial.h>
 #include <math.h>
 
@@ -19,12 +19,12 @@
  * Odrv4 - HL Hip FE && HR Hip FE
  * Odrv5 - HL upper leg & HR upper leg
  **/
-HardwareSerial& serial_FLFR_UL = Serial1;
-HardwareSerial& serial_FLFR_FE = Serial2;
+HardwareSerial& serial_FLFR_UL = Serial5;
+HardwareSerial& serial_FLFR_FE = Serial4;
 HardwareSerial& serial_FRFL_AA = Serial3;
-HardwareSerial& serial_HRHL_AA = Serial4;
-HardwareSerial& serial_HLHR_FE = Serial5;
-HardwareSerial& serial_HLHR_UL = Serial6;
+HardwareSerial& serial_HRHL_AA = Serial6;
+HardwareSerial& serial_HLHR_FE = Serial2;
+HardwareSerial& serial_HLHR_UL = Serial1;
 
 // OdriveArduino objects 
 ODriveArduino odrive0(serial_FLFR_UL);      // FL and FR Upper Leg
@@ -44,91 +44,18 @@ struct spine_biqu_data_t{
   float qd_knee[4];
   int32_t flags[4];
   int32_t checksum;
-}
+};
 
-float q_joint[12] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
-float qd_joint[12] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
-
-void calibration()
-{
-  int requested_state;
-
-  requested_state = ODriveArduino::AXIS_STATE_FULL_CALIBRATION_SEQUENCE;
-  if (!odrive.run_state(0, requested_state, true))
-    return;
-}
-
-void read_q_joint(OdriveArduino odrive) {
-  
-}
-
-// reads current position estimate from odrive and stores in global array
-void update_q_joint() {
-  serial_FLFR_UL.write("r axis0.encoder.pos_estimate\n"); 
-  cur_raw_pos[0] = serial_FLFR_UL.readFloat();
-  cur_joint_pos[0] = fmod(cur_raw_pos[0]*(360/GEAR_RATIO), 360);
-
-  serial_FLFR_UL.write("r axis1.encoder.pos_estimate\n"); 
-  cur_raw_pos[1] = serial_FLFR_UL.readFloat();
-  cur_joint_pos[1] = fmod(cur_raw_pos[1]*(360/GEAR_RATIO), 360);
-
-  serial_FLFR_FE.write("r axis0.encoder.pos_estimate\n");
-  cur_raw_pos[2] = serial_FLFR_FE.readFloat();
-  cur_joint_pos[2] = fmod(cur_raw_pos[2]*(360/GEAR_RATIO), 360);
-
-  serial_FLFR_FE.write("r axis1.encoder.pos_estimate\n");
-  cur_raw_pos[3] = serial_FLFR_FE.readFloat();
-  cur_joint_pos[3] = fmod(cur_raw_pos[3]*(360/GEAR_RATIO), 360);
-
-  serial_FRFL_AA.write("r axis0.encoder.pos_estimate\n");
-  cur_raw_pos[4] = serial_FRFL_AA.readFloat();
-  cur_joint_pos[4] = fmod(cur_raw_pos[4]*(360/GEAR_RATIO), 360);
-
-  serial_FRFL_AA.write("r axis1.encoder.pos_estimate\n");
-  cur_raw_pos[5] = serial_FRFL_AA.readFloat();
-  cur_joint_pos[5] = fmod(cur_raw_pos[5]*(360/GEAR_RATIO), 360);
-
-  serial_HLHR_FE.write("r axis0.encoder.pos_estimate\n");
-  cur_raw_pos[6] = serial_HLHR_FE.readFloat();
-  cur_joint_pos[6] = fmod(cur_raw_pos[6]*(360/GEAR_RATIO), 360);
-
-  serial_HLHR_FE.write("r axis1.encoder.pos_estimate\n");
-  cur_raw_pos[7] = serial_HLHR_FE.readFloat();
-  cur_joint_pos[7] = fmod(cur_raw_pos[7]*(360/GEAR_RATIO), 360);
-
-  serial_FLFR_FE.write("r axis1.encoder.pos_estimate\n");
-  cur_raw_pos[3] = serial_FLFR_FE.readFloat();
-  cur_joint_pos[3] = fmod(cur_raw_pos[3]*(360/GEAR_RATIO), 360);
-
-  serial_FRFL_AA.write("r axis0.encoder.pos_estimate\n");
-  cur_raw_pos[4] = serial_FRFL_AA.readFloat();
-  cur_joint_pos[4] = fmod(cur_raw_pos[4]*(360/GEAR_RATIO), 360);
-
-  serial_FRFL_AA.write("r axis1.encoder.pos_estimate\n");
-  cur_raw_pos[5] = serial_FRFL_AA.readFloat();
-  cur_joint_pos[5] = fmod(cur_raw_pos[5]*(360/GEAR_RATIO), 360);
-
-  serial_HLHR_FE.write("r axis0.encoder.pos_estimate\n");
-  cur_raw_pos[6] = serial_HLHR_FE.readFloat();
-  cur_joint_pos[6] = fmod(cur_raw_pos[6]*(360/GEAR_RATIO), 360);
-
-  serial_HLHR_FE.write("r axis1.encoder.pos_estimate\n");
-  cur_raw_pos[7] = serial_HLHR_FE.readFloat();
-  cur_joint_pos[7] = fmod(cur_raw_pos[7]*(360/GEAR_RATIO), 360);
-
-  // verify everything is 0-360 for consistency
-  for (int i = 0; i < NUM_JOINTS; i++) {
-    cur_joint_pos[i] = cur_joint_pos[i] < 0 ? cur_joint_pos[i] + 360 : cur_joint_pos[i];
-  }
-}
+float q_joint[12] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+float qd_joint[12] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 void setup()
 {
   // Start Serial Monitor
   Serial.begin(115200); 
-
+  Serial.println("Monitor On!");
   // Start Serial Communication with Odrives
-  serial_FLFR_UL.begin(115200);
+  serial_FLFR_UL.begin(921600);
   serial_FLFR_FE.begin(115200);
   serial_FRFL_AA.begin(115200);
   serial_HRHL_AA.begin(115200);
@@ -142,161 +69,114 @@ void loop()
   {
     char c = Serial.read();
 
-    // Run calibration depending which leg module
-    if (c == 'u')
+
+    // all legs calibration
+    if (c == 'o')
     {
       int requested_state;
 
-      requested_state = ODriveArduino::AXIS_STATE_MOTOR_CALIBRATION;
-      Serial << "Upper Leg: Requesting state " << requested_state << '\n';
+      requested_state = ODriveArduino::AXIS_STATE_FULL_CALIBRATION_SEQUENCE;
+      Serial.print("All Leg: Requesting state "); Serial.print(requested_state); Serial.println("");
       odrive0.run_state(0, requested_state, true);
-      odrive0.run_state(1, requested_state, true); // are these all blocking?
-      odrive5.run_state(0, requested_state, true);
-      odrive5.run_state(1, requested_state, true);
-
-      requested_state = ODriveArduino::AXIS_STATE_ENCODER_OFFSET_CALIBRATION;
-      Serial << "Upper Leg: Requesting state " << requested_state << '\n';
-      odrive0.run_state(0, requested_state, true);
+      Serial.println("0-0 done");
       odrive0.run_state(1, requested_state, true);
+      Serial.println("0-1 done");
+      odrive1.run_state(0, requested_state, true);
+      Serial.println("1-0 done");
+      odrive1.run_state(1, requested_state, true);
+      Serial.println("1-1 done");
+      odrive2.run_state(0, requested_state, true);
+      Serial.println("2-0 done");
+      odrive2.run_state(1, requested_state, true);
+      Serial.println("2-1 done");
+      odrive3.run_state(0, requested_state, true);
+      Serial.println("3-0 done");
+      odrive3.run_state(1, requested_state, true);
+      Serial.println("3-1 done");
+      odrive4.run_state(0, requested_state, true);
+      Serial.println("4-0 done");
+      odrive4.run_state(1, requested_state, true);
+      Serial.println("4-1 done");
       odrive5.run_state(0, requested_state, true);
+      Serial.println("5-0 done");
       odrive5.run_state(1, requested_state, true);
-
+      Serial.println("5-1 done");
+      
       requested_state = ODriveArduino::AXIS_STATE_CLOSED_LOOP_CONTROL;
-      Serial << "Upper Leg: Requesting state " << requested_state << '\n';
+      Serial.print("All Leg: Requesting state "); Serial.print(requested_state); Serial.println("");
       odrive0.run_state(0, requested_state, false);
-      odrive0.run_state(1, requested_state, false); 
+      odrive0.run_state(1, requested_state, false);
+      odrive1.run_state(0, requested_state, false);
+      odrive1.run_state(1, requested_state, false);
+      odrive2.run_state(0, requested_state, false);
+      odrive2.run_state(1, requested_state, false);
+      odrive3.run_state(0, requested_state, false);
+      odrive3.run_state(1, requested_state, false);
+      odrive4.run_state(0, requested_state, false);
+      odrive4.run_state(1, requested_state, false);
       odrive5.run_state(0, requested_state, false);
       odrive5.run_state(1, requested_state, false); // don't wait
     }
 
-    if (c == 'f')
+    // Just calibrating one ODrive: front two upper legs
+    if (c == 'j')
     {
       int requested_state;
 
-      requested_state = ODriveArduino::AXIS_STATE_MOTOR_CALIBRATION;
-      Serial << "Hip FE: Requesting state " << requested_state << '\n';
-      odrive1.run_state(0, requested_state, true);
-      odrive1.run_state(1, requested_state, true);
-      odrive4.run_state(0, requested_state, true);
-      odrive4.run_state(1, requested_state, true);
-
-      requested_state = ODriveArduino::AXIS_STATE_ENCODER_OFFSET_CALIBRATION;
-      Serial << "Hip FE: Requesting state " << requested_state << '\n';
-      odrive1.run_state(0, requested_state, true);
-      odrive1.run_state(1, requested_state, true);
-      odrive4.run_state(0, requested_state, true);
-      odrive4.run_state(1, requested_state, true);
-
+      requested_state = ODriveArduino::AXIS_STATE_FULL_CALIBRATION_SEQUENCE;
+      Serial.print("All Leg: Requesting state "); Serial.print(requested_state); Serial.println("");
+      odrive0.run_state(0, requested_state, true);
+      Serial.println("0-0 done");
+      odrive0.run_state(1, requested_state, true);
+      Serial.println("0-1 done");
       requested_state = ODriveArduino::AXIS_STATE_CLOSED_LOOP_CONTROL;
-      Serial << "Hip FE: Requesting state " << requested_state << '\n';
-      odrive1.run_state(0, requested_state, false);
-      odrive1.run_state(1, requested_state, false); 
-      odrive4.run_state(0, requested_state, false);
-      odrive4.run_state(1, requested_state, false); // don't wait
+      Serial.print("All Leg: Requesting state "); Serial.print(requested_state); Serial.println("");
+      odrive0.run_state(0, requested_state, false);
+      odrive0.run_state(1, requested_state, false);
     }
 
-    if (c == 'a')
+    if (c == 'z')
     {
-      int requested_state;
+      float start = micros();
 
-      requested_state = ODriveArduino::AXIS_STATE_MOTOR_CALIBRATION;
-      Serial << "Hip AA: Requesting state " << requested_state << '\n';
-      odrive2.run_state(0, requested_state, true);
-      odrive2.run_state(1, requested_state, true);
-      odrive3.run_state(0, requested_state, true);
-      odrive3.run_state(1, requested_state, true);
+      // set position by batch
+      odrive0.SetBatchPosition(0.0f, 0.0f); 
+      // read feedback
+      String state = odrive0.readState();
+      
+      float end = micros();
 
-      requested_state = ODriveArduino::AXIS_STATE_ENCODER_OFFSET_CALIBRATION;
-      Serial << "Hip AA: Requesting state " << requested_state << '\n';
-      odrive2.run_state(0, requested_state, true);
-      odrive2.run_state(1, requested_state, true);
-      odrive3.run_state(0, requested_state, true);
-      odrive3.run_state(1, requested_state, true);
-
-      requested_state = ODriveArduino::AXIS_STATE_CLOSED_LOOP_CONTROL;
-      Serial << "Hip AA: Requesting state " << requested_state << '\n';
-      odrive2.run_state(0, requested_state, false);
-      odrive2.run_state(1, requested_state, false); 
-      odrive3.run_state(0, requested_state, false);
-      odrive3.run_state(1, requested_state, false); // don't wait
+      float timeSpent = end - start;
+      
+      Serial.print("time spend (ms): "); Serial.print(timeSpent); Serial.println("");
+      Serial.println(state);
     }
-
-    if (c == 't')
-    {
-      float temp_pos_states[12];
-      float temp_vel_states[12];
-
-      Serial.print("start: "); Serial.prinln(millis());
-      
-      // Send command
-      odrive0.SetPosition(0, 1.0f);
-      odrive0.SetPosition(1, 1.0f);
-
-      odrive1.SetPosition(0, 1.0f);
-      odrive1.SetPosition(1, 1.0f);
-      
-      odrive2.SetPosition(0, 1.0f);
-      odrive2.SetPosition(1, 1.0f);
-
-      odrive3.SetPosition(0, 1.0f);
-      odrive3.SetPosition(1, 1.0f);
-
-      odrive4.SetPosition(0, 1.0f);
-      odrive4.SetPosition(1, 1.0f);
-
-      odrive5.SetPosition(0, 1.0f);
-      odrive5.SetPosition(1, 1.0f);
-
-      // Read Position States
-      temp_pos_states[0] = odrive0.GetPosition(0);
-      temp_pos_states[1] = odrive0.GetPosition(1);
-
-      temp_pos_states[2] = odrive1.GetPosition(0);
-      temp_pos_states[3] = odrive1.GetPosition(1);
-
-      temp_pos_states[4] = odrive2.GetPosition(0);
-      temp_pos_states[5] = odrive2.GetPosition(1);
-
-      temp_pos_states[6] = odrive3.GetPosition(0);
-      temp_pos_states[7] = odrive3.GetPosition(1);
-
-      temp_pos_states[8] = odrive4.GetPosition(0);
-      temp_pos_states[9] = odrive4.GetPosition(1);
-      
-      temp_pos_states[10] = odrive5.GetPosition(0);
-      temp_pos_states[11] = odrive5.GetPosition(1);
-      
-      // Read Velocity States
-      temp_vel_states[0] = odrive0.GetVelocity(0);
-      temp_vel_states[1] = odrive0.GetVelocity(1);
-
-      temp_vel_states[2] = odrive1.GetVelocity(0);
-      temp_vel_states[3] = odrive1.GetVelocity(1);
     
-      temp_vel_states[4] = odrive2.GetVelocity(0);
-      temp_vel_states[5] = odrive2.GetVelocity(1);
+    if (c == 's')
+    {
+      float start = micros();
 
-      temp_vel_states[6] = odrive3.GetVelocity(0);
-      temp_vel_states[7] = odrive3.GetVelocity(1);
+      // set position by batch
+      odrive0.SetBatchPosition(0.5f, 0.5f); 
+      // read feedback
+      String state = odrive0.readState();
       
-      temp_vel_states[8] = odrive4.GetVelocity(0);
-      temp_vel_states[9] = odrive4.GetVelocity(1);
+      float end = micros();
 
-      temp_vel_states[10] = odrive5.GetVelocity(0);
-      temp_vel_states[11] = odrive5.GetVelocity(1);
+      float timeSpent = end - start;
       
+      Serial.print("time spend (micros): "); Serial.print(timeSpent); Serial.println("");
+      Serial.println(state);
+    }
 
-      Serial.println("Position")
-      for(int i = 0; i < 12; i++){
-        Serial.print(temp_pos_states[i]); Serial.print(" ");
-      }
+    if ( c == 'f')
+    {
+      Serial.println(odrive0.readState());
+    }
 
-      Serial.println("Velocity")
-      for(int i = 0; i < 12; i++){
-        Serial.print(temp_vel_states[i]); Serial.print(" ");
-      }
-      
-      Serial.print("end: "); Serial.prinln(millis());
+    if ( c == 'h')
+    {
+      Serial.println(odrive0.getHelp());
     }
   }
 }
