@@ -1,4 +1,4 @@
- #include <ODriveArduino.h>
+#include <ODriveArduino.h>
 #include <HardwareSerial.h>
 #include <math.h>
 
@@ -56,11 +56,11 @@ void setup()
   Serial.println("Monitor On!");
   // Start Serial Communication with Odrives
   serial_FLFR_UL.begin(921600);
-  serial_FLFR_FE.begin(115200);
-  serial_FRFL_AA.begin(115200);
-  serial_HRHL_AA.begin(115200);
-  serial_HLHR_FE.begin(115200);
-  serial_HLHR_UL.begin(115200);
+  serial_FLFR_FE.begin(921600);
+  serial_FRFL_AA.begin(921600);
+  serial_HRHL_AA.begin(921600);
+  serial_HLHR_FE.begin(921600);
+  serial_HLHR_UL.begin(921600);
 }
 
 void loop()
@@ -129,10 +129,27 @@ void loop()
       Serial.println("0-0 done");
       odrive0.run_state(1, requested_state, true);
       Serial.println("0-1 done");
+
+      odrive1.run_state(0, requested_state, true);
+      Serial.println("1-0 done");
+      odrive1.run_state(1, requested_state, true);
+      Serial.println("1-1 done");
+
+      odrive5.run_state(0, requested_state, true);
+      Serial.println("5-0 done");
+      odrive5.run_state(1, requested_state, true);
+      Serial.println("5-1 done");
+      
       requested_state = ODriveArduino::AXIS_STATE_CLOSED_LOOP_CONTROL;
       Serial.print("All Leg: Requesting state "); Serial.print(requested_state); Serial.println("");
       odrive0.run_state(0, requested_state, false);
       odrive0.run_state(1, requested_state, false);
+
+      odrive1.run_state(0, requested_state, false);
+      odrive1.run_state(1, requested_state, false);
+
+      odrive5.run_state(0, requested_state, false);
+      odrive5.run_state(1, requested_state, false);
     }
 
     if (c == 'z')
@@ -141,15 +158,52 @@ void loop()
 
       // set position by batch
       odrive0.SetBatchPosition(0.0f, 0.0f); 
+      odrive1.SetBatchPosition(0.0f, 0.0f); 
+      odrive5.SetBatchPosition(0.0f, 0.0f); 
       // read feedback
-      String state = odrive0.readState();
+      // String state = odrive0.readState();
+      Serial5.print("f\n");
+      Serial4.print("f\n");
+      Serial1.print("f\n");
+      
+      String str1 = "";
+      String str4 = "";
+      String str5 = "";
+      bool odr0_flag = true;
+      bool odr1_flag = true;
+      bool odr5_flag = true;
+      while (odr0_flag || odr1_flag || odr5_flag)  {
+        if (Serial1.available() && odr5_flag) {
+            char c = Serial1.read();
+            if (c == '\n')
+                odr5_flag = false;
+            str1 += c;
+        }
+
+        if (Serial4.available() && odr1_flag) {
+            char c = Serial4.read();
+            if (c == '\n')
+                odr1_flag = false;
+            str4 += c;
+        }
+
+        if (Serial5.available() && odr0_flag) {
+            char c = Serial5.read();
+            if (c == '\n')
+                odr0_flag = false;
+            str5 += c;
+        }
+      }
       
       float end = micros();
 
       float timeSpent = end - start;
       
       Serial.print("time spend (ms): "); Serial.print(timeSpent); Serial.println("");
-      Serial.println(state);
+      // Serial.println(state);
+      Serial.println(str1);
+      Serial.println(str4);
+      Serial.println(str5);
     }
     
     if (c == 's')
@@ -158,15 +212,52 @@ void loop()
 
       // set position by batch
       odrive0.SetBatchPosition(0.5f, 0.5f); 
+      odrive1.SetBatchPosition(0.5f, 0.5f); 
+      odrive5.SetBatchPosition(0.5f, 0.5f); 
       // read feedback
-      String state = odrive0.readState();
+      // String state = odrive0.readState();
+      Serial5.print("f\n");
+      Serial4.print("f\n");
+      Serial1.print("f\n");
+      
+      String str1 = "";
+      String str4 = "";
+      String str5 = "";
+      bool odr0_flag = true;
+      bool odr1_flag = true;
+      bool odr5_flag = true;
+      while (odr0_flag || odr1_flag || odr5_flag)  {
+        if (Serial1.available() && odr5_flag) {
+            char c = Serial1.read();
+            if (c == '\n')
+                odr5_flag = false;
+            str1 += c;
+        }
+
+        if (Serial4.available() && odr1_flag) {
+            char c = Serial4.read();
+            if (c == '\n')
+                odr1_flag = false;
+            str4 += c;
+        }
+
+        if (Serial5.available() && odr0_flag) {
+            char c = Serial5.read();
+            if (c == '\n')
+                odr0_flag = false;
+            str5 += c;
+        }
+      }
       
       float end = micros();
 
       float timeSpent = end - start;
       
-      Serial.print("time spend (micros): "); Serial.print(timeSpent); Serial.println("");
-      Serial.println(state);
+      Serial.print("time spend (ms): "); Serial.print(timeSpent); Serial.println("");
+      // Serial.println(state);
+      Serial.println(str1);
+      Serial.println(str4);
+      Serial.println(str5);
     }
 
     if ( c == 'f')
