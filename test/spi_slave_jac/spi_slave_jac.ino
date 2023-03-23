@@ -17,11 +17,21 @@ uint32_t bigbytes = 0xAAAA;
 
 uint8_t onlyonce = 1;
 uint8_t i = 0;
+uint8_t buildArr[4];
+
+// Good: using memcpy
+float bytesToFloat(uint8_t (&bytes)[4]) {
+    static_assert(sizeof(float) == 4, "float size expected to be 4 bytes");
+    float result;
+    memcpy(&result, bytes, 4);
+    return result;
+}
 
 void setup() {
   Serial.begin(115200);
   while (!Serial);
   Serial.println("Hello World!");
+  Serial.println("Iteration | Send | Receive");
   actualdata[0] = 0x79;
   actualdata[254] = 0x44;
   
@@ -37,24 +47,25 @@ void loop() {
 }
 
 void myFunc() {
-//  Serial.print("-----\n");
+  Serial.print("-----\n");
   
   while ( mySPI.available() ) {
-    if(i >= sizeof(rpitest)){
+    if(i >= 4){
+      // one float requires 4 transactions
       i = 0;
-
-      // for debugging lower frequency
-      //Serial.print("-------SLAVE------\n");
-
-      // for debugging higher frequency
+      float entry = bytesToFloat(buildArr);
+      Serial.print("read : "); Serial.print(entry); Serial.println("");
       Serial.println("-");
-    }
-      Serial.print(i); Serial.print("|");
-      Serial.print(rpitest[i], HEX);
+    } 
+      Serial.print(i); Serial.print("|");Serial.println("");
+      //Serial.print(rpitest[i], HEX);
       mySPI.pushr(rpitest[i]);
-      i++;
+      
       uint8_t receivedVal = mySPI.popr();
-      Serial.print("|"); Serial.print(receivedVal, HEX); Serial.println("");
+      buildArr[i] = receivedVal;
+      //Serial.print("|"); Serial.print(receivedVal, BIN); Serial.println("");
+      
+      i++;
   }
 
 //  Serial.print("-------SLAVE------\n");
