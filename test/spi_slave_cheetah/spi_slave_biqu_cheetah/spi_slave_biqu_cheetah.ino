@@ -46,8 +46,8 @@ torque_t  torque_out;
 current_t  current_out;
 
 // spi buffers
-uint16_t rx_buff[RX_LEN];
-uint16_t tx_buff[TX_LEN];
+uint16_t rx_buf[RX_LEN];
+uint16_t tx_buf[TX_LEN];
 
 leg_state l1_state, l2_state, l3_state, l4_state;
 leg_control l1_control, l2_control, l3_control, l4_control;
@@ -55,6 +55,8 @@ leg_control l1_control, l2_control, l3_control, l4_control;
 bool spi_enabled = 0;
 
 volatile int bytecount;
+volatile bool dummy_bytes;
+
 
 bool process_bytes = false;
 
@@ -68,7 +70,7 @@ void setup() {
   while (!Serial);
   Serial.println("Hello World!");
 
-  memset(&tx_buff, 0, TX_LEN * sizeof(uint16_t));
+  memset(&tx_buf, 0, TX_LEN * sizeof(uint16_t));
   memset(&spi_data, 0, sizeof(spi_data_t));
   memset(&spi_command,0,sizeof(spi_command_t));
   memset(&torque_out,0,sizeof(torque_t));
@@ -76,12 +78,13 @@ void setup() {
 
   spi_data = {{1.1, 1.2, 1.3, 1.4}, {2.1, 2.2, 2.3, 2.4}, {3.1, 3.2, 3.3, 3.4}, 
               {4.1, 4.2, 4.3, 4.4}, {5.1, 5.2, 5.3, 5.4}, {6.1, 6.2, 6.3, 6.4}, 
-              {12, 13, 14, 15}, 20};
+              {16, 17, 18, 19}, 20};
 
   for(int i = 0; i < DATA_LEN; i++)
-    tx_buff[i] = ((uint16_t*)(&spi_data))[i];
+    tx_buf[i] = ((uint16_t*)(&spi_data))[i];
 
   bytecount = -1;
+  dummy_bytes = true;
 
   // SPI doesn't work if enabled while the CS pin is pulled low
   // Wait for CS to not be low, then enable SPI
@@ -100,20 +103,8 @@ void loop() {
   if (process_bytes) {
     // After reading, save rx_buf into spi_command
     rx_to_command();
-    Serial.print("spi_command.q_des_abad[0]: "); Serial.print(spi_command.q_des_abad[0]); Serial.println("");
-    Serial.print("spi_command.q_des_abad[1]: "); Serial.print(spi_command.q_des_abad[1]); Serial.println("");
-    Serial.print("spi_command.q_des_abad[2]: "); Serial.print(spi_command.q_des_abad[2]); Serial.println("");
-    Serial.print("spi_command.q_des_abad[3]: "); Serial.print(spi_command.q_des_abad[3]); Serial.println("");
-
-    Serial.print("spi_command.q_des_hip[0]: "); Serial.print(spi_command.q_des_hip[0]); Serial.println("");
-    Serial.print("spi_command.q_des_hip[1]: "); Serial.print(spi_command.q_des_hip[1]); Serial.println("");
-    Serial.print("spi_command.q_des_hip[2]: "); Serial.print(spi_command.q_des_hip[2]); Serial.println("");
-    Serial.print("spi_command.q_des_hip[3]: "); Serial.print(spi_command.q_des_hip[3]); Serial.println("");
-
-    Serial.print("spi_command.q_des_knee[0]: "); Serial.print(spi_command.q_des_knee[0]); Serial.println("");
-    Serial.print("spi_command.q_des_knee[1]: "); Serial.print(spi_command.q_des_knee[1]); Serial.println("");
-    Serial.print("spi_command.q_des_knee[2]: "); Serial.print(spi_command.q_des_knee[2]); Serial.println("");
-    Serial.print("spi_command.q_des_knee[3]: "); Serial.print(spi_command.q_des_knee[3]); Serial.println("");
+    // debug_rx_buf();
+    debug_command();
 
     // // Read states from ODrives
     // feedback();
@@ -137,21 +128,22 @@ void spi_isr() {
   Serial.print("Enter ISR: "); Serial.print(bytecount); Serial.println("");
 
   // Shift out dummy bytes
-  if (bytecount == -1) {
-    mySPI.popr();             // Dummy bytes
-    mySPI.pushr(tx_buff[0]);
+  if (bytecount == -1) {         // Dummy bytes
+    mySPI.pushr(tx_buf[0]);
+    mySPI.popr();
+    bytecount++;
   }
 
   while (mySPI.available()) {
-    rx_buff[bytecount] = mySPI.popr();
+    rx_buf[bytecount] = mySPI.popr();
           
     bytecount++;
     if(bytecount<TX_LEN) {
-      mySPI.pushr(tx_buff[bytecount]);
+      mySPI.pushr(tx_buf[bytecount]);
     }
   }
 
-  if (bytecount > TX_LEN) {
+  if (bytecount >= TX_LEN) {
     process_bytes = true;
   }
 }
@@ -163,13 +155,13 @@ void spi_isr() {
  */
 void rx_to_command() {
   // check checksum first!
-  uint32_t calc_checksum = xor_checksum((uint32_t*)rx_buff, 64);   // 64 = (15 control values * 4 legs) + 4 flag entries
+  uint32_t calc_checksum = xor_checksum((uint32_t*)rx_buf, 64);   // 64 = (15 control values * 4 legs) + 4 flag entries
   for(int i = 0; i < CMD_LEN; i++)
   {
-      ((uint16_t*)(&spi_command))[i] = rx_buff[i];
+      ((uint16_t*)(&spi_command))[i] = rx_buf[i];
   }
 
-  // run control, which fills in tx_buff for the next iteration
+  // run control, which fills in tx_buf for the next iteration
   if (calc_checksum != spi_command.checksum) {
     spi_data.flags[1] = 0xdead; 
   }
@@ -279,4 +271,161 @@ uint32_t xor_checksum(uint32_t* data, size_t len)
         t = t ^ data[i];
     return t;
 
+}
+
+
+void debug_command() {
+    Serial.print("spi_command.q_des_abad[0]: "); Serial.print(spi_command.q_des_abad[0]); Serial.println("");
+    Serial.print("spi_command.q_des_abad[1]: "); Serial.print(spi_command.q_des_abad[1]); Serial.println("");
+    Serial.print("spi_command.q_des_abad[2]: "); Serial.print(spi_command.q_des_abad[2]); Serial.println("");
+    Serial.print("spi_command.q_des_abad[3]: "); Serial.print(spi_command.q_des_abad[3]); Serial.println("");
+
+    Serial.print("spi_command.q_des_hip[0]: "); Serial.print(spi_command.q_des_hip[0]); Serial.println("");
+    Serial.print("spi_command.q_des_hip[1]: "); Serial.print(spi_command.q_des_hip[1]); Serial.println("");
+    Serial.print("spi_command.q_des_hip[2]: "); Serial.print(spi_command.q_des_hip[2]); Serial.println("");
+    Serial.print("spi_command.q_des_hip[3]: "); Serial.print(spi_command.q_des_hip[3]); Serial.println("");
+
+    Serial.print("spi_command.q_des_knee[0]: "); Serial.print(spi_command.q_des_knee[0]); Serial.println("");
+    Serial.print("spi_command.q_des_knee[1]: "); Serial.print(spi_command.q_des_knee[1]); Serial.println("");
+    Serial.print("spi_command.q_des_knee[2]: "); Serial.print(spi_command.q_des_knee[2]); Serial.println("");
+    Serial.print("spi_command.q_des_knee[3]: "); Serial.print(spi_command.q_des_knee[3]); Serial.println("");
+
+    Serial.print("spi_command.qd_des_abad[0]: "); Serial.print(spi_command.qd_des_abad[0]); Serial.println("");
+    Serial.print("spi_command.qd_des_abad[1]: "); Serial.print(spi_command.qd_des_abad[1]); Serial.println("");
+    Serial.print("spi_command.qd_des_abad[2]: "); Serial.print(spi_command.qd_des_abad[2]); Serial.println("");
+    Serial.print("spi_command.qd_des_abad[3]: "); Serial.print(spi_command.qd_des_abad[3]); Serial.println("");
+
+    Serial.print("spi_command.qd_des_hip[0]: "); Serial.print(spi_command.qd_des_hip[0]); Serial.println("");
+    Serial.print("spi_command.qd_des_hip[1]: "); Serial.print(spi_command.qd_des_hip[1]); Serial.println("");
+    Serial.print("spi_command.qd_des_hip[2]: "); Serial.print(spi_command.qd_des_hip[2]); Serial.println("");
+    Serial.print("spi_command.qd_des_hip[3]: "); Serial.print(spi_command.qd_des_hip[3]); Serial.println("");
+
+    Serial.print("spi_command.qd_des_knee[0]: "); Serial.print(spi_command.qd_des_knee[0]); Serial.println("");
+    Serial.print("spi_command.qd_des_knee[1]: "); Serial.print(spi_command.qd_des_knee[1]); Serial.println("");
+    Serial.print("spi_command.qd_des_knee[2]: "); Serial.print(spi_command.qd_des_knee[2]); Serial.println("");
+    Serial.print("spi_command.qd_des_knee[3]: "); Serial.print(spi_command.qd_des_knee[3]); Serial.println("");
+
+    Serial.print("spi_command.kp_abad[0]: "); Serial.print(spi_command.kp_abad[0]); Serial.println("");
+    Serial.print("spi_command.kp_abad[1]: "); Serial.print(spi_command.kp_abad[1]); Serial.println("");
+    Serial.print("spi_command.kp_abad[2]: "); Serial.print(spi_command.kp_abad[2]); Serial.println("");
+    Serial.print("spi_command.kp_abad[3]: "); Serial.print(spi_command.kp_abad[3]); Serial.println("");
+
+    Serial.print("spi_command.kp_hip[0]: "); Serial.print(spi_command.kp_hip[0]); Serial.println("");
+    Serial.print("spi_command.kp_hip[1]: "); Serial.print(spi_command.kp_hip[1]); Serial.println("");
+    Serial.print("spi_command.kp_hip[2]: "); Serial.print(spi_command.kp_hip[2]); Serial.println("");
+    Serial.print("spi_command.kp_hip[3]: "); Serial.print(spi_command.kp_hip[3]); Serial.println("");
+
+    Serial.print("spi_command.kp_knee[0]: "); Serial.print(spi_command.kp_knee[0]); Serial.println("");
+    Serial.print("spi_command.kp_knee[1]: "); Serial.print(spi_command.kp_knee[1]); Serial.println("");
+    Serial.print("spi_command.kp_knee[2]: "); Serial.print(spi_command.kp_knee[2]); Serial.println("");
+    Serial.print("spi_command.kp_knee[3]: "); Serial.print(spi_command.kp_knee[3]); Serial.println("");
+
+    Serial.print("spi_command.kd_abad[0]: "); Serial.print(spi_command.kd_abad[0]); Serial.println("");
+    Serial.print("spi_command.kd_abad[1]: "); Serial.print(spi_command.kd_abad[1]); Serial.println("");
+    Serial.print("spi_command.kd_abad[2]: "); Serial.print(spi_command.kd_abad[2]); Serial.println("");
+    Serial.print("spi_command.kd_abad[3]: "); Serial.print(spi_command.kd_abad[3]); Serial.println("");
+
+    Serial.print("spi_command.kd_hip[0]: "); Serial.print(spi_command.kd_hip[0]); Serial.println("");
+    Serial.print("spi_command.kd_hip[1]: "); Serial.print(spi_command.kd_hip[1]); Serial.println("");
+    Serial.print("spi_command.kd_hip[2]: "); Serial.print(spi_command.kd_hip[2]); Serial.println("");
+    Serial.print("spi_command.kd_hip[3]: "); Serial.print(spi_command.kd_hip[3]); Serial.println("");
+
+    Serial.print("spi_command.kd_knee[0]: "); Serial.print(spi_command.kd_knee[0]); Serial.println("");
+    Serial.print("spi_command.kd_knee[1]: "); Serial.print(spi_command.kd_knee[1]); Serial.println("");
+    Serial.print("spi_command.kd_knee[2]: "); Serial.print(spi_command.kd_knee[2]); Serial.println("");
+    Serial.print("spi_command.kd_knee[3]: "); Serial.print(spi_command.kd_knee[3]); Serial.println("");
+
+    Serial.print("spi_command.flags[0]: "); Serial.print(spi_command.flags[0]); Serial.println("");
+    Serial.print("spi_command.flags[1]: "); Serial.print(spi_command.flags[1]); Serial.println("");
+    Serial.print("spi_command.flags[2]: "); Serial.print(spi_command.flags[2]); Serial.println("");
+    Serial.print("spi_command.flags[3]: "); Serial.print(spi_command.flags[3]); Serial.println("");
+
+    Serial.print("spi_command.checksum: "); Serial.print(spi_command.checksum); Serial.println("");
+}
+
+
+void debug_rx_buf() {
+  // Serial.print("rx_buf[0]: "); Serial.print(rx_buf[0], HEX); Serial.println("");
+  // Serial.print("rx_buf[1]: "); Serial.print(rx_buf[1], HEX); Serial.println("");
+  // Serial.print("rx_buf[2]: "); Serial.print(rx_buf[2], HEX); Serial.println("");
+  // Serial.print("rx_buf[3]: "); Serial.print(rx_buf[3], HEX); Serial.println("");
+  // Serial.print("rx_buf[4]: "); Serial.print(rx_buf[4], HEX); Serial.println("");
+  // Serial.print("rx_buf[5]: "); Serial.print(rx_buf[5], HEX); Serial.println("");
+  // Serial.print("rx_buf[6]: "); Serial.print(rx_buf[6], HEX); Serial.println("");
+  // Serial.print("rx_buf[7]: "); Serial.print(rx_buf[7], HEX); Serial.println("");
+  // Serial.print("rx_buf[8]: "); Serial.print(rx_buf[8], HEX); Serial.println("");
+  // Serial.print("rx_buf[9]: "); Serial.print(rx_buf[9], HEX); Serial.println("");
+  
+  // Serial.print("rx_buf[10]: "); Serial.print(rx_buf[10], HEX); Serial.println("");
+  // Serial.print("rx_buf[11]: "); Serial.print(rx_buf[11], HEX); Serial.println("");
+  // Serial.print("rx_buf[12]: "); Serial.print(rx_buf[12], HEX); Serial.println("");
+  // Serial.print("rx_buf[13]: "); Serial.print(rx_buf[13], HEX); Serial.println("");
+  // Serial.print("rx_buf[14]: "); Serial.print(rx_buf[14], HEX); Serial.println("");
+  // Serial.print("rx_buf[15]: "); Serial.print(rx_buf[15], HEX); Serial.println("");
+  // Serial.print("rx_buf[16]: "); Serial.print(rx_buf[16], HEX); Serial.println("");
+  // Serial.print("rx_buf[17]: "); Serial.print(rx_buf[17], HEX); Serial.println("");
+  // Serial.print("rx_buf[18]: "); Serial.print(rx_buf[18], HEX); Serial.println("");
+  // Serial.print("rx_buf[19]: "); Serial.print(rx_buf[19], HEX); Serial.println("");
+
+  // Serial.print("rx_buf[20]: "); Serial.print(rx_buf[20], HEX); Serial.println("");
+  // Serial.print("rx_buf[21]: "); Serial.print(rx_buf[21], HEX); Serial.println("");
+  // Serial.print("rx_buf[22]: "); Serial.print(rx_buf[22], HEX); Serial.println("");
+  // Serial.print("rx_buf[23]: "); Serial.print(rx_buf[23], HEX); Serial.println("");
+  // Serial.print("rx_buf[24]: "); Serial.print(rx_buf[24], HEX); Serial.println("");
+  // Serial.print("rx_buf[25]: "); Serial.print(rx_buf[25], HEX); Serial.println("");
+  // Serial.print("rx_buf[26]: "); Serial.print(rx_buf[26], HEX); Serial.println("");
+  // Serial.print("rx_buf[27]: "); Serial.print(rx_buf[27], HEX); Serial.println("");
+  // Serial.print("rx_buf[28]: "); Serial.print(rx_buf[28], HEX); Serial.println("");
+  // Serial.print("rx_buf[29]: "); Serial.print(rx_buf[29], HEX); Serial.println("");
+  
+  // Serial.print("rx_buf[30]: "); Serial.print(rx_buf[30], HEX); Serial.println("");
+  // Serial.print("rx_buf[31]: "); Serial.print(rx_buf[31], HEX); Serial.println("");
+  // Serial.print("rx_buf[32]: "); Serial.print(rx_buf[32], HEX); Serial.println("");
+  // Serial.print("rx_buf[33]: "); Serial.print(rx_buf[33], HEX); Serial.println("");
+  // Serial.print("rx_buf[34]: "); Serial.print(rx_buf[34], HEX); Serial.println("");
+  // Serial.print("rx_buf[35]: "); Serial.print(rx_buf[35], HEX); Serial.println("");
+  // Serial.print("rx_buf[36]: "); Serial.print(rx_buf[36], HEX); Serial.println("");
+  // Serial.print("rx_buf[37]: "); Serial.print(rx_buf[37], HEX); Serial.println("");
+  // Serial.print("rx_buf[38]: "); Serial.print(rx_buf[38], HEX); Serial.println("");
+  // Serial.print("rx_buf[39]: "); Serial.print(rx_buf[39], HEX); Serial.println("");
+
+  // Serial.print("rx_buf[40]: "); Serial.print(rx_buf[40], HEX); Serial.println("");
+  // Serial.print("rx_buf[41]: "); Serial.print(rx_buf[41], HEX); Serial.println("");
+  // Serial.print("rx_buf[42]: "); Serial.print(rx_buf[42], HEX); Serial.println("");
+  // Serial.print("rx_buf[43]: "); Serial.print(rx_buf[43], HEX); Serial.println("");
+  // Serial.print("rx_buf[44]: "); Serial.print(rx_buf[44], HEX); Serial.println("");
+  // Serial.print("rx_buf[45]: "); Serial.print(rx_buf[45], HEX); Serial.println("");
+  // Serial.print("rx_buf[46]: "); Serial.print(rx_buf[46], HEX); Serial.println("");
+  // Serial.print("rx_buf[47]: "); Serial.print(rx_buf[47], HEX); Serial.println("");
+  // Serial.print("rx_buf[48]: "); Serial.print(rx_buf[48], HEX); Serial.println("");
+  // Serial.print("rx_buf[49]: "); Serial.print(rx_buf[49], HEX); Serial.println("");
+
+  // Serial.print("rx_buf[50]: "); Serial.print(rx_buf[50], HEX); Serial.println("");
+  // Serial.print("rx_buf[51]: "); Serial.print(rx_buf[51], HEX); Serial.println("");
+  // Serial.print("rx_buf[52]: "); Serial.print(rx_buf[52], HEX); Serial.println("");
+  // Serial.print("rx_buf[53]: "); Serial.print(rx_buf[53], HEX); Serial.println("");
+  // Serial.print("rx_buf[54]: "); Serial.print(rx_buf[54], HEX); Serial.println("");
+  // Serial.print("rx_buf[55]: "); Serial.print(rx_buf[55], HEX); Serial.println("");
+  // Serial.print("rx_buf[56]: "); Serial.print(rx_buf[56], HEX); Serial.println("");
+  // Serial.print("rx_buf[57]: "); Serial.print(rx_buf[57], HEX); Serial.println("");
+  // Serial.print("rx_buf[58]: "); Serial.print(rx_buf[58], HEX); Serial.println("");
+  // Serial.print("rx_buf[59]: "); Serial.print(rx_buf[59], HEX); Serial.println("");
+  
+  Serial.print("rx_buf[60]: "); Serial.print(rx_buf[60], HEX); Serial.println("");
+  Serial.print("rx_buf[61]: "); Serial.print(rx_buf[61], HEX); Serial.println("");
+  Serial.print("rx_buf[62]: "); Serial.print(rx_buf[62], HEX); Serial.println("");
+  Serial.print("rx_buf[63]: "); Serial.print(rx_buf[63], HEX); Serial.println("");
+  Serial.print("rx_buf[64]: "); Serial.print(rx_buf[64], HEX); Serial.println("");
+  Serial.print("rx_buf[65]: "); Serial.print(rx_buf[65], HEX); Serial.println("");
+  Serial.print("rx_buf[66]: "); Serial.print(rx_buf[66], HEX); Serial.println("");
+  Serial.print("rx_buf[67]: "); Serial.print(rx_buf[67], HEX); Serial.println("");
+  Serial.print("rx_buf[68]: "); Serial.print(rx_buf[68], HEX); Serial.println("");
+  Serial.print("rx_buf[69]: "); Serial.print(rx_buf[69], HEX); Serial.println("");
+
+  Serial.print("rx_buf[124]: "); Serial.print(rx_buf[124], HEX); Serial.println("");
+  Serial.print("rx_buf[125]: "); Serial.print(rx_buf[125], HEX); Serial.println("");
+  Serial.print("rx_buf[126]: "); Serial.print(rx_buf[126], HEX); Serial.println("");
+  Serial.print("rx_buf[127]: "); Serial.print(rx_buf[127], HEX); Serial.println("");
+  Serial.print("rx_buf[128]: "); Serial.print(rx_buf[128], HEX); Serial.println("");
+  Serial.print("rx_buf[129]: "); Serial.print(rx_buf[129], HEX); Serial.println("");
 }
