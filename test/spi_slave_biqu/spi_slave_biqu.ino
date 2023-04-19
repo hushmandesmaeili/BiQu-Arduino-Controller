@@ -40,6 +40,8 @@ int interruptPin_jumped = 9;
 /// MOTOR CONSTANTS ///
 #define MOTOR_KT 0.018f;     // N.m/A
 
+uint32_t _iteration;
+
 struct spi_data_t spi_data; // data from spine to up
 spi_command_t spi_command; // data from up to spine
 torque_t  torque_out;
@@ -56,7 +58,6 @@ bool spi_enabled = 0;
 
 volatile int bytecount;
 volatile bool dummy_bytes;
-
 
 bool process_bytes = false;
 
@@ -104,19 +105,22 @@ void loop() {
     // After reading, save rx_buf into spi_command
     rx_to_command();
     // debug_rx_buf();
-    debug_command();
+    // debug_command();
+    debug_command_single_leg(0);
 
     // // Read states from ODrives
     // feedback();
 
-    // // command_to_leg_control();
     // compute_torque_out();
+    // debug_torqueout_single_leg(0);
+
     // compute_current_out();
     
     // // Send command to ODrives
     // send_current_control();
     process_bytes = false;
     bytecount = -1;
+    ++_iteration;
   }
 }
 
@@ -125,7 +129,7 @@ void loop() {
  * SPI interrupt service routine
  */
 void spi_isr() {
-  Serial.print("Enter ISR: "); Serial.print(bytecount); Serial.println("");
+  // Serial.print("Enter ISR: "); Serial.print(bytecount); Serial.println("");
 
   // Shift out dummy bytes
   if (bytecount == -1) {         // Dummy bytes
@@ -275,72 +279,104 @@ uint32_t xor_checksum(uint32_t* data, size_t len)
 
 
 void debug_command() {
-    Serial.print("spi_command.q_des_abad[0]: "); Serial.print(spi_command.q_des_abad[0]); Serial.println("");
-    Serial.print("spi_command.q_des_abad[1]: "); Serial.print(spi_command.q_des_abad[1]); Serial.println("");
-    Serial.print("spi_command.q_des_abad[2]: "); Serial.print(spi_command.q_des_abad[2]); Serial.println("");
-    Serial.print("spi_command.q_des_abad[3]: "); Serial.print(spi_command.q_des_abad[3]); Serial.println("");
+  Serial.print("spi_command.q_des_abad[0]: "); Serial.print(spi_command.q_des_abad[0]); Serial.println("");
+  Serial.print("spi_command.q_des_abad[1]: "); Serial.print(spi_command.q_des_abad[1]); Serial.println("");
+  Serial.print("spi_command.q_des_abad[2]: "); Serial.print(spi_command.q_des_abad[2]); Serial.println("");
+  Serial.print("spi_command.q_des_abad[3]: "); Serial.print(spi_command.q_des_abad[3]); Serial.println("");
 
-    Serial.print("spi_command.q_des_hip[0]: "); Serial.print(spi_command.q_des_hip[0]); Serial.println("");
-    Serial.print("spi_command.q_des_hip[1]: "); Serial.print(spi_command.q_des_hip[1]); Serial.println("");
-    Serial.print("spi_command.q_des_hip[2]: "); Serial.print(spi_command.q_des_hip[2]); Serial.println("");
-    Serial.print("spi_command.q_des_hip[3]: "); Serial.print(spi_command.q_des_hip[3]); Serial.println("");
+  Serial.print("spi_command.q_des_hip[0]: "); Serial.print(spi_command.q_des_hip[0]); Serial.println("");
+  Serial.print("spi_command.q_des_hip[1]: "); Serial.print(spi_command.q_des_hip[1]); Serial.println("");
+  Serial.print("spi_command.q_des_hip[2]: "); Serial.print(spi_command.q_des_hip[2]); Serial.println("");
+  Serial.print("spi_command.q_des_hip[3]: "); Serial.print(spi_command.q_des_hip[3]); Serial.println("");
 
-    Serial.print("spi_command.q_des_knee[0]: "); Serial.print(spi_command.q_des_knee[0]); Serial.println("");
-    Serial.print("spi_command.q_des_knee[1]: "); Serial.print(spi_command.q_des_knee[1]); Serial.println("");
-    Serial.print("spi_command.q_des_knee[2]: "); Serial.print(spi_command.q_des_knee[2]); Serial.println("");
-    Serial.print("spi_command.q_des_knee[3]: "); Serial.print(spi_command.q_des_knee[3]); Serial.println("");
+  Serial.print("spi_command.q_des_knee[0]: "); Serial.print(spi_command.q_des_knee[0]); Serial.println("");
+  Serial.print("spi_command.q_des_knee[1]: "); Serial.print(spi_command.q_des_knee[1]); Serial.println("");
+  Serial.print("spi_command.q_des_knee[2]: "); Serial.print(spi_command.q_des_knee[2]); Serial.println("");
+  Serial.print("spi_command.q_des_knee[3]: "); Serial.print(spi_command.q_des_knee[3]); Serial.println("");
 
-    Serial.print("spi_command.qd_des_abad[0]: "); Serial.print(spi_command.qd_des_abad[0]); Serial.println("");
-    Serial.print("spi_command.qd_des_abad[1]: "); Serial.print(spi_command.qd_des_abad[1]); Serial.println("");
-    Serial.print("spi_command.qd_des_abad[2]: "); Serial.print(spi_command.qd_des_abad[2]); Serial.println("");
-    Serial.print("spi_command.qd_des_abad[3]: "); Serial.print(spi_command.qd_des_abad[3]); Serial.println("");
+  Serial.print("spi_command.qd_des_abad[0]: "); Serial.print(spi_command.qd_des_abad[0]); Serial.println("");
+  Serial.print("spi_command.qd_des_abad[1]: "); Serial.print(spi_command.qd_des_abad[1]); Serial.println("");
+  Serial.print("spi_command.qd_des_abad[2]: "); Serial.print(spi_command.qd_des_abad[2]); Serial.println("");
+  Serial.print("spi_command.qd_des_abad[3]: "); Serial.print(spi_command.qd_des_abad[3]); Serial.println("");
 
-    Serial.print("spi_command.qd_des_hip[0]: "); Serial.print(spi_command.qd_des_hip[0]); Serial.println("");
-    Serial.print("spi_command.qd_des_hip[1]: "); Serial.print(spi_command.qd_des_hip[1]); Serial.println("");
-    Serial.print("spi_command.qd_des_hip[2]: "); Serial.print(spi_command.qd_des_hip[2]); Serial.println("");
-    Serial.print("spi_command.qd_des_hip[3]: "); Serial.print(spi_command.qd_des_hip[3]); Serial.println("");
+  Serial.print("spi_command.qd_des_hip[0]: "); Serial.print(spi_command.qd_des_hip[0]); Serial.println("");
+  Serial.print("spi_command.qd_des_hip[1]: "); Serial.print(spi_command.qd_des_hip[1]); Serial.println("");
+  Serial.print("spi_command.qd_des_hip[2]: "); Serial.print(spi_command.qd_des_hip[2]); Serial.println("");
+  Serial.print("spi_command.qd_des_hip[3]: "); Serial.print(spi_command.qd_des_hip[3]); Serial.println("");
 
-    Serial.print("spi_command.qd_des_knee[0]: "); Serial.print(spi_command.qd_des_knee[0]); Serial.println("");
-    Serial.print("spi_command.qd_des_knee[1]: "); Serial.print(spi_command.qd_des_knee[1]); Serial.println("");
-    Serial.print("spi_command.qd_des_knee[2]: "); Serial.print(spi_command.qd_des_knee[2]); Serial.println("");
-    Serial.print("spi_command.qd_des_knee[3]: "); Serial.print(spi_command.qd_des_knee[3]); Serial.println("");
+  Serial.print("spi_command.qd_des_knee[0]: "); Serial.print(spi_command.qd_des_knee[0]); Serial.println("");
+  Serial.print("spi_command.qd_des_knee[1]: "); Serial.print(spi_command.qd_des_knee[1]); Serial.println("");
+  Serial.print("spi_command.qd_des_knee[2]: "); Serial.print(spi_command.qd_des_knee[2]); Serial.println("");
+  Serial.print("spi_command.qd_des_knee[3]: "); Serial.print(spi_command.qd_des_knee[3]); Serial.println("");
 
-    Serial.print("spi_command.kp_abad[0]: "); Serial.print(spi_command.kp_abad[0]); Serial.println("");
-    Serial.print("spi_command.kp_abad[1]: "); Serial.print(spi_command.kp_abad[1]); Serial.println("");
-    Serial.print("spi_command.kp_abad[2]: "); Serial.print(spi_command.kp_abad[2]); Serial.println("");
-    Serial.print("spi_command.kp_abad[3]: "); Serial.print(spi_command.kp_abad[3]); Serial.println("");
+  Serial.print("spi_command.kp_abad[0]: "); Serial.print(spi_command.kp_abad[0]); Serial.println("");
+  Serial.print("spi_command.kp_abad[1]: "); Serial.print(spi_command.kp_abad[1]); Serial.println("");
+  Serial.print("spi_command.kp_abad[2]: "); Serial.print(spi_command.kp_abad[2]); Serial.println("");
+  Serial.print("spi_command.kp_abad[3]: "); Serial.print(spi_command.kp_abad[3]); Serial.println("");
 
-    Serial.print("spi_command.kp_hip[0]: "); Serial.print(spi_command.kp_hip[0]); Serial.println("");
-    Serial.print("spi_command.kp_hip[1]: "); Serial.print(spi_command.kp_hip[1]); Serial.println("");
-    Serial.print("spi_command.kp_hip[2]: "); Serial.print(spi_command.kp_hip[2]); Serial.println("");
-    Serial.print("spi_command.kp_hip[3]: "); Serial.print(spi_command.kp_hip[3]); Serial.println("");
+  Serial.print("spi_command.kp_hip[0]: "); Serial.print(spi_command.kp_hip[0]); Serial.println("");
+  Serial.print("spi_command.kp_hip[1]: "); Serial.print(spi_command.kp_hip[1]); Serial.println("");
+  Serial.print("spi_command.kp_hip[2]: "); Serial.print(spi_command.kp_hip[2]); Serial.println("");
+  Serial.print("spi_command.kp_hip[3]: "); Serial.print(spi_command.kp_hip[3]); Serial.println("");
 
-    Serial.print("spi_command.kp_knee[0]: "); Serial.print(spi_command.kp_knee[0]); Serial.println("");
-    Serial.print("spi_command.kp_knee[1]: "); Serial.print(spi_command.kp_knee[1]); Serial.println("");
-    Serial.print("spi_command.kp_knee[2]: "); Serial.print(spi_command.kp_knee[2]); Serial.println("");
-    Serial.print("spi_command.kp_knee[3]: "); Serial.print(spi_command.kp_knee[3]); Serial.println("");
+  Serial.print("spi_command.kp_knee[0]: "); Serial.print(spi_command.kp_knee[0]); Serial.println("");
+  Serial.print("spi_command.kp_knee[1]: "); Serial.print(spi_command.kp_knee[1]); Serial.println("");
+  Serial.print("spi_command.kp_knee[2]: "); Serial.print(spi_command.kp_knee[2]); Serial.println("");
+  Serial.print("spi_command.kp_knee[3]: "); Serial.print(spi_command.kp_knee[3]); Serial.println("");
 
-    Serial.print("spi_command.kd_abad[0]: "); Serial.print(spi_command.kd_abad[0]); Serial.println("");
-    Serial.print("spi_command.kd_abad[1]: "); Serial.print(spi_command.kd_abad[1]); Serial.println("");
-    Serial.print("spi_command.kd_abad[2]: "); Serial.print(spi_command.kd_abad[2]); Serial.println("");
-    Serial.print("spi_command.kd_abad[3]: "); Serial.print(spi_command.kd_abad[3]); Serial.println("");
+  Serial.print("spi_command.kd_abad[0]: "); Serial.print(spi_command.kd_abad[0]); Serial.println("");
+  Serial.print("spi_command.kd_abad[1]: "); Serial.print(spi_command.kd_abad[1]); Serial.println("");
+  Serial.print("spi_command.kd_abad[2]: "); Serial.print(spi_command.kd_abad[2]); Serial.println("");
+  Serial.print("spi_command.kd_abad[3]: "); Serial.print(spi_command.kd_abad[3]); Serial.println("");
 
-    Serial.print("spi_command.kd_hip[0]: "); Serial.print(spi_command.kd_hip[0]); Serial.println("");
-    Serial.print("spi_command.kd_hip[1]: "); Serial.print(spi_command.kd_hip[1]); Serial.println("");
-    Serial.print("spi_command.kd_hip[2]: "); Serial.print(spi_command.kd_hip[2]); Serial.println("");
-    Serial.print("spi_command.kd_hip[3]: "); Serial.print(spi_command.kd_hip[3]); Serial.println("");
+  Serial.print("spi_command.kd_hip[0]: "); Serial.print(spi_command.kd_hip[0]); Serial.println("");
+  Serial.print("spi_command.kd_hip[1]: "); Serial.print(spi_command.kd_hip[1]); Serial.println("");
+  Serial.print("spi_command.kd_hip[2]: "); Serial.print(spi_command.kd_hip[2]); Serial.println("");
+  Serial.print("spi_command.kd_hip[3]: "); Serial.print(spi_command.kd_hip[3]); Serial.println("");
 
-    Serial.print("spi_command.kd_knee[0]: "); Serial.print(spi_command.kd_knee[0]); Serial.println("");
-    Serial.print("spi_command.kd_knee[1]: "); Serial.print(spi_command.kd_knee[1]); Serial.println("");
-    Serial.print("spi_command.kd_knee[2]: "); Serial.print(spi_command.kd_knee[2]); Serial.println("");
-    Serial.print("spi_command.kd_knee[3]: "); Serial.print(spi_command.kd_knee[3]); Serial.println("");
+  Serial.print("spi_command.kd_knee[0]: "); Serial.print(spi_command.kd_knee[0]); Serial.println("");
+  Serial.print("spi_command.kd_knee[1]: "); Serial.print(spi_command.kd_knee[1]); Serial.println("");
+  Serial.print("spi_command.kd_knee[2]: "); Serial.print(spi_command.kd_knee[2]); Serial.println("");
+  Serial.print("spi_command.kd_knee[3]: "); Serial.print(spi_command.kd_knee[3]); Serial.println("");
 
-    Serial.print("spi_command.flags[0]: "); Serial.print(spi_command.flags[0]); Serial.println("");
-    Serial.print("spi_command.flags[1]: "); Serial.print(spi_command.flags[1]); Serial.println("");
-    Serial.print("spi_command.flags[2]: "); Serial.print(spi_command.flags[2]); Serial.println("");
-    Serial.print("spi_command.flags[3]: "); Serial.print(spi_command.flags[3]); Serial.println("");
+  Serial.print("spi_command.flags[0]: "); Serial.print(spi_command.flags[0]); Serial.println("");
+  Serial.print("spi_command.flags[1]: "); Serial.print(spi_command.flags[1]); Serial.println("");
+  Serial.print("spi_command.flags[2]: "); Serial.print(spi_command.flags[2]); Serial.println("");
+  Serial.print("spi_command.flags[3]: "); Serial.print(spi_command.flags[3]); Serial.println("");
 
-    Serial.print("spi_command.checksum: "); Serial.print(spi_command.checksum); Serial.println("");
+  Serial.print("spi_command.checksum: "); Serial.print(spi_command.checksum); Serial.println("");
+}
+
+void debug_command_single_leg(int leg) {
+  Serial.print(_iteration); Serial.print(", ");
+  Serial.print(spi_command.q_des_abad[leg], 9); Serial.print(", ");
+  Serial.print(spi_command.q_des_hip[leg], 9); Serial.print(", ");
+  Serial.print(spi_command.q_des_knee[leg], 9); Serial.print(", ");
+
+  Serial.print(spi_command.qd_des_abad[leg], 9); Serial.print(", ");
+  Serial.print(spi_command.qd_des_hip[leg], 9); Serial.print(", ");
+  Serial.print(spi_command.qd_des_knee[leg], 9); Serial.print(", ");
+
+  Serial.print(spi_command.kp_abad[leg], 3); Serial.print(", ");
+  Serial.print(spi_command.kp_hip[leg], 3); Serial.print(", ");
+  Serial.print(spi_command.kp_knee[leg], 3); Serial.print(", ");
+
+  Serial.print(spi_command.kd_abad[leg], 3); Serial.print(", ");
+  Serial.print(spi_command.kd_hip[leg], 3); Serial.print(", ");
+  Serial.print(spi_command.kd_knee[leg], 3); Serial.print(", ");
+
+  Serial.print(spi_command.tau_abad_ff[leg], 9); Serial.print(", ");
+  Serial.print(spi_command.tau_hip_ff[leg], 9); Serial.print(", ");
+  Serial.print(spi_command.tau_knee_ff[leg], 9); Serial.print(", ");
+
+  Serial.print(spi_command.flags[leg], 2); Serial.println("");
+}
+
+void debug_torqueout_single_leg(int leg) {
+  Serial.print(_iteration); Serial.print(", ");
+  Serial.print(torque_out.tau_abad[leg], 9); Serial.print(", ");
+  Serial.print(torque_out.tau_hip[leg], 9); Serial.print(", ");
+  Serial.print(torque_out.tau_knee[leg], 9); Serial.print(", ");
 }
 
 
