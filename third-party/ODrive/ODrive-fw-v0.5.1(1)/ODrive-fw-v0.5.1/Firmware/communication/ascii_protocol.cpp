@@ -190,7 +190,7 @@ void ASCII_protocol_process_line(const uint8_t* buffer, size_t len, StreamSink& 
 
     } else if (cmd[0] == 't') { // batch torque control
         float torque_setpoint0, torque_setpoint1;
-        int numscan = sscanf(cmd, "c %f %f", &torque_setpoint0, &torque_setpoint1);
+        int numscan = sscanf(cmd, "t %f %f", &torque_setpoint0, &torque_setpoint1);
         if (numscan < 1) {
             respond(response_channel, use_checksum, "t: invalid command format");
         } else {
