@@ -18,6 +18,8 @@
  * Odrv3 - HR Hip AA & HL Hip AA
  * Odrv4 - HL upper leg & HR upper leg
  * Odrv5 - HL Hip FE && HR Hip FE
+ * 
+ * OUTDATED CONFIGURATION -- CHECK full_leg_control_test FOR SETUP
  **/
 HardwareSerial& serial_FLFR_UL = Serial5;
 HardwareSerial& serial_FLFR_FE = Serial4;
